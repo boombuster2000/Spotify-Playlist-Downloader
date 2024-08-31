@@ -22,7 +22,7 @@ const getToken = async () => {
   return await response.json();
 }
 
-const getPlaylistID = async (token, playlistUrl) => {
+const getPlaylistItems = async (token, playlistUrl) => {
     const playlistID = playlistUrl.split("playlist/")[1].split("?")[0];
     const playlistTracks = await fetch(`https://api.spotify.com/v1/playlists/${playlistID}/tracks`, 
         {
@@ -30,17 +30,15 @@ const getPlaylistID = async (token, playlistUrl) => {
                 "Authorization": `${token.token_type} ${token.access_token}`
             }
         }
-    )
+    );
 
-    console.log(await playlistTracks.json());
-
-
-
+    return await playlistTracks.json();
 }
+
 
 const main = async () => {
     const token = await getToken();
-    getPlaylistID(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7")
+    const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7")
     
 }
 
