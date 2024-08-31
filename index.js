@@ -1,5 +1,9 @@
-require('dotenv').config()
+require('dotenv').config();
+const express = require('express');
 
+
+const app = express()
+const PORT = 3000;
 const client_id = process.env.CLIENT_ID; 
 const client_secret = process.env.CLIENT_SECRET;
 
@@ -18,8 +22,14 @@ const getToken = async () => {
   return await response.json();
 }
 
+const getPlaylistID = token => {
+
+}
+
 const main = async () => {
     const token = await getToken();
+
+    
 }
 
 main();
