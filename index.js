@@ -122,7 +122,7 @@ const getYoutubeSongUrl = async (songName, artists) => {
         q: query,
         type: 'video',
         maxResults: '1',
-        videoCatagoryId: '10',
+        videoCategoryId: '10',
         key: YOUTUBE_API_KEY,
     });
 
