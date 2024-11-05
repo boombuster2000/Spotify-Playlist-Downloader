@@ -43,6 +43,10 @@ const getToken = async () => {
             signal: controller.signal
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const token = await response.json();
 
         // Cache token with expiration
