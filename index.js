@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-
+const fs = require('fs');
 
 const app = express()
 const PORT = 3000;
@@ -24,7 +24,7 @@ const getToken = async () => {
 
 const getPlaylistItems = async (token, playlistUrl) => {
     const playlistID = playlistUrl.split("playlist/")[1].split("?")[0];
-    const playlistTracks = await fetch(`https://api.spotify.com/v1/playlists/${playlistID}/tracks`, 
+    const request = await fetch(`https://api.spotify.com/v1/playlists/${playlistID}/tracks`, 
         {
             headers : {
                 "Authorization": `${token.token_type} ${token.access_token}`
@@ -32,14 +32,29 @@ const getPlaylistItems = async (token, playlistUrl) => {
         }
     );
 
-    return await playlistTracks.json();
-}
+    const response = await request.json();
+    //fs.writeFileSync("./response.json", JSON.stringify(response, null, 4));
 
+    const playlistTracks = [];
+
+    for (const item of response.items) {
+      const artists = []
+      for (const artist of item.track.artists) {
+        artists.push(artist.name);
+      }
+
+      playlistTracks.push({
+        "name": item.track.name, 
+        "artists": artists
+      });
+    }
+
+    return playlistTracks;
+}
 
 const main = async () => {
     const token = await getToken();
     const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7")
-    
 }
 
 main();
