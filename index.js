@@ -1,3 +1,5 @@
+const { response } = require('express');
+
 require('dotenv').config();
 
 // Validate required environment variables
@@ -134,13 +136,13 @@ const getYoutubeSongUrl = async (songName, artists) => {
     try {
         // Perform the GET request
         const response = await fetch(url, { signal: controller.signal });
+        const data = await response.json();
 
         // Handle response
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            console.error(JSON.stringify(data, null, 4));
+            throw new Error(data.error.message);
         }
-
-        const data = await response.json();
 
         // Check if any videos were found
         if (data.items && data.items.length > 0) {
