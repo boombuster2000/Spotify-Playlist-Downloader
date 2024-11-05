@@ -154,10 +154,10 @@ const getYoutubeSongUrl = async (songName, artists) => {
 const main = async () => {
     const token = await getToken();
     const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7");
+    const youtuveVideoUrls = []
 
     for (const track of tracks){
-        const youtubeVideoUrl = await getYoutubeSongUrl(track.name, track.artists);
-        console.log(youtubeVideoUrl);
+        youtuveVideoUrls.push(await getYoutubeSongUrl(track.name, track.artists));
     }
 
 }
