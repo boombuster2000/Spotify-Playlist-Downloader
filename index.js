@@ -40,7 +40,7 @@ const getToken = async () => {
             }),
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + (Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64')),
+                'Authorization': `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`, 'utf8').toString('base64')}`,
             },
             signal: controller.signal
         });
@@ -117,6 +117,14 @@ const getPlaylistItems = async (token, playlistUrl) => {
 };
 
 const getYoutubeSongUrl = async (songName, artists) => {
+    if (!songName || typeof songName !== 'string') {
+        throw new TypeError('songName must be a non-empty string');
+    }
+
+    if (!Array.isArray(artists) || artists.length === 0 || !artists.every(artist => typeof artist === 'string')) {
+        throw new TypeError('artists must be a non-empty array of strings');
+    }
+        
     const query = `${songName} ${artists.join(' ')}`;
 
     const params = new URLSearchParams({
