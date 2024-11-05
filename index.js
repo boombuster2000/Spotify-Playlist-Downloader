@@ -2,15 +2,16 @@ require('dotenv').config();
 const fs = require('fs');
 
 // Validate required environment variables
-const requiredEnvVars = ['CLIENT_ID', 'CLIENT_SECRET'];
+const requiredEnvVars = ['CLIENT_ID', 'CLIENT_SECRET', 'YOUTUBE_API_KEY'];
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Missing required environment variable: ${envVar}`);
   }
 }
 
-const client_id = process.env.CLIENT_ID; 
-const client_secret = process.env.CLIENT_SECRET;
+const CLIENT_ID = process.env.CLIENT_ID; 
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 let tokenCache = {
   token: null,
@@ -23,7 +24,7 @@ const getToken = async () => {
         return tokenCache.token;
     }
 
-    if (!client_id || !client_secret) {
+    if (!CLIENT_ID || !CLIENT_SECRET) {
         throw new Error('Invalid client credentials');
     }
 
@@ -38,7 +39,7 @@ const getToken = async () => {
             }),
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + (Buffer.from(client_id + ':' + client_secret).toString('base64')),
+                'Authorization': 'Basic ' + (Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64')),
             },
             signal: controller.signal
         });
@@ -76,9 +77,9 @@ const extractPlaylistId = (url) => {
     } catch (error) {
       throw new Error('Invalid playlist URL format');
     }
-  };
+};
   
-  const getPlaylistItems = async (token, playlistUrl) => {
+const getPlaylistItems = async (token, playlistUrl) => {
     const playlistID = extractPlaylistId(playlistUrl);
     const playlistTracks = [];
     let nextUrl = `https://api.spotify.com/v1/playlists/${playlistID}/tracks`;
@@ -112,11 +113,47 @@ const extractPlaylistId = (url) => {
     }
   
     return playlistTracks;
-  };
+};
+
+const getYoutubeSongUrl = async (songName="", artists="") => {
+    const query = "Crab Rave";
+    const params = new URLSearchParams({
+        part: 'snippet',
+        q: query,
+        type: 'video',
+        maxResults: '1',
+        key: YOUTUBE_API_KEY,
+    });
+
+    const url = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
+
+    try {
+        // Perform the GET request
+        const response = await fetch(url);
+
+        // Handle response
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Check if any videos were found
+        if (data.items && data.items.length > 0) {
+            const videoId = data.items[0].id.videoId;
+            return `https://www.youtube.com/watch?v=${videoId}`;
+        }
+
+    } catch (error) {
+        console.error("Error fetching YouTube data:", error);
+    }
+
+}
 
 const main = async () => {
     const token = await getToken();
     const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7")
+    console.log(await getYoutubeSongUrl());
 }
 
 main();
