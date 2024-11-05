@@ -122,14 +122,18 @@ const getYoutubeSongUrl = async (songName, artists) => {
         q: query,
         type: 'video',
         maxResults: '1',
+        videoCatagoryId: '10',
         key: YOUTUBE_API_KEY,
     });
 
     const url = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     try {
         // Perform the GET request
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
 
         // Handle response
         if (!response.ok) {
@@ -144,8 +148,14 @@ const getYoutubeSongUrl = async (songName, artists) => {
             return `https://www.youtube.com/watch?v=${videoId}`;
         }
 
+        throw new Error('No videos found');
+
     } catch (error) {
         console.error("Error fetching YouTube data:", error);
+        throw error; // Re-throw to handle in caller
+
+    } finally {
+        clearTimeout(timeoutId);
     }
 
 }
