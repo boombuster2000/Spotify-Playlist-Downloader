@@ -1,6 +1,5 @@
-const { response } = require('express');
-
 require('dotenv').config();
+const fs = require("fs");
 
 // Validate required environment variables
 const requiredEnvVars = ['CLIENT_ID', 'CLIENT_SECRET', 'YOUTUBE_API_KEY'];
@@ -173,12 +172,15 @@ const getYoutubeSongUrl = async (songName, artists) => {
 const main = async () => {
     const token = await getToken();
     const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7");
-    const youtubeVideoUrls = [];
+    const youtubeVideoUrls = [] || JSON.parse(fs.readFileSync("./youtuble_urls.json"));
 
-    for (const track of tracks){
-        youtubeVideoUrls.push(await getYoutubeSongUrl(track.name, track.artists));
-    }
+    //for (const track of tracks){
+    //    youtubeVideoUrls.push(await getYoutubeSongUrl(track.name, track.artists));
+    //}
+
+    //fs.writeFileSync("youtube_urls.json", JSON.stringify(youtubeVideoUrls, null, 4));
     
+
     
 }
 
