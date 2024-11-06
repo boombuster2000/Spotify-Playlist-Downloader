@@ -1,16 +1,18 @@
+const { response } = require('express');
+
 require('dotenv').config();
-const fs = require('fs');
 
 // Validate required environment variables
-const requiredEnvVars = ['CLIENT_ID', 'CLIENT_SECRET'];
+const requiredEnvVars = ['CLIENT_ID', 'CLIENT_SECRET', 'YOUTUBE_API_KEY'];
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Missing required environment variable: ${envVar}`);
   }
 }
 
-const client_id = process.env.CLIENT_ID; 
-const client_secret = process.env.CLIENT_SECRET;
+const CLIENT_ID = process.env.CLIENT_ID; 
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 let tokenCache = {
   token: null,
@@ -23,7 +25,7 @@ const getToken = async () => {
         return tokenCache.token;
     }
 
-    if (!client_id || !client_secret) {
+    if (!CLIENT_ID || !CLIENT_SECRET) {
         throw new Error('Invalid client credentials');
     }
 
@@ -38,7 +40,7 @@ const getToken = async () => {
             }),
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + (Buffer.from(client_id + ':' + client_secret).toString('base64')),
+                'Authorization': `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`, 'utf8').toString('base64')}`,
             },
             signal: controller.signal
         });
@@ -76,9 +78,9 @@ const extractPlaylistId = (url) => {
     } catch (error) {
       throw new Error('Invalid playlist URL format');
     }
-  };
+};
   
-  const getPlaylistItems = async (token, playlistUrl) => {
+const getPlaylistItems = async (token, playlistUrl) => {
     const playlistID = extractPlaylistId(playlistUrl);
     const playlistTracks = [];
     let nextUrl = `https://api.spotify.com/v1/playlists/${playlistID}/tracks`;
@@ -112,11 +114,72 @@ const extractPlaylistId = (url) => {
     }
   
     return playlistTracks;
-  };
+};
+
+const getYoutubeSongUrl = async (songName, artists) => {
+    if (!songName || typeof songName !== 'string') {
+        throw new TypeError('songName must be a non-empty string');
+    }
+
+    if (!Array.isArray(artists) || artists.length === 0 || !artists.every(artist => typeof artist === 'string')) {
+        throw new TypeError('artists must be a non-empty array of strings');
+    }
+        
+    const query = `${songName} ${artists.join(' ')}`;
+
+    const params = new URLSearchParams({
+        part: 'snippet',
+        q: query,
+        type: 'video',
+        maxResults: '1',
+        videoCategoryId: '10',
+        key: YOUTUBE_API_KEY,
+    });
+
+    const url = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    try {
+        // Perform the GET request
+        const response = await fetch(url, { signal: controller.signal });
+        const data = await response.json();
+
+        // Handle response
+        if (!response.ok) {
+            console.error(JSON.stringify(data, null, 4));
+            throw new Error(data.error.message);
+        }
+
+        // Check if any videos were found
+        if (data.items && data.items.length > 0) {
+            const videoId = data.items[0].id.videoId;
+            return `https://www.youtube.com/watch?v=${videoId}`;
+        }
+
+        throw new Error('No videos found');
+
+    } catch (error) {
+        console.error("Error fetching YouTube data:", error);
+        throw error; // Re-throw to handle in caller
+
+    } finally {
+        clearTimeout(timeoutId);
+    }
+
+}
 
 const main = async () => {
     const token = await getToken();
-    const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7")
+    const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7");
+    const youtubeVideoUrls = [];
+
+    for (const track of tracks){
+        youtubeVideoUrls.push(await getYoutubeSongUrl(track.name, track.artists));
+    }
+    
+    
 }
 
 main();
