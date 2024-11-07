@@ -119,13 +119,13 @@ const getPlaylistItems = async (token, playlistUrl) => {
         nextUrl = response.next; // Handle pagination
     }
 
-    fs.writeFileSync('./tracks.json', JSON.stringify(tracks, null, 4));  
+    fs.writeFileSync('./tracks.json', JSON.stringify(playlistTracks, null, 4));  
     return playlistTracks;
 };
 
 const getYoutubeSongUrls = async (tracks) => {
 
-    for (const track in tracks) {
+    for (const track of tracks) {
         const songName = track.name;
         const artists = track.artists;
 
@@ -240,10 +240,13 @@ const download = async (browser, track)=> {
                     console.warn(`Timeout error on dowload website for ${track.name}. Attempt ${i+1}`);
                 }
             } 
+            else {
+                throw error;
+            }
         }
     }
 
-    page.close();
+    await page.close();
 }
 
 const downloadFile = async track => {    
@@ -267,6 +270,7 @@ const downloadFile = async track => {
 
 const main = async () => {
     const token = await getToken();
+
 
     console.log("Getting spotify tracks.");
     const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7");
