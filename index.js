@@ -172,8 +172,9 @@ const getYoutubeSongUrls = async (tracks) => {
             if (data.items && data.items.length > 0) {
                 const videoId = data.items[0].id.videoId;
                 track.youtube_url = `https://www.youtube.com/watch?v=${videoId}`;
+            } else {
+                throw new Error('No videos found');
             }
-            throw new Error('No videos found');
         })
         .catch(error => {
             console.error("Error fetching YouTube data:", error);
@@ -250,7 +251,15 @@ const download = async (browser, track)=> {
 }
 
 const downloadFile = async track => {    
-    const filePath = `./Downloaded Songs/${track.name} - ${track.artists.join(' ')}.mp3`;
+    // Ensure download directory exists
+    
+    const dir = './Downloaded Songs';
+    if (!fs.existsSync(dir)){
+        fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const filePath = `${dir}/${track.name} - ${track.artists.join(' ')}.mp3`;
+
     console.log(`Downloading ${track.name}`);
 
     fetch(track.download_url)
@@ -273,21 +282,25 @@ const main = async () => {
 
 
     console.log("Getting spotify tracks.");
-    const tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7");
+    let tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7");
 
     console.log("Getting youtube urls");
     tracks = await getYoutubeSongUrls(tracks);
 
     // Launch browser
     const browser = await puppeteer.launch({
-        headless: false, // Set to true for headless mode
-        args: ['--no-sandbox'],
+        headless: true, // Set to true for headless mode
         protocolTimeout: 180000
     });
 
 
-    const downloadPromises = tracks.map(track => download(browser, track));
-    await Promise.all(downloadPromises);
+    // Process in batches of 3 concurrent downloads
+    const batchSize = 3;
+    for (let i = 0; i < tracks.length; i += batchSize) {
+        const batch = tracks.slice(i, i + batchSize);
+        const batchPromises = batch.map(track => download(browser, track));
+        await Promise.all(batchPromises);
+    }
 
     await browser.close();
 }
