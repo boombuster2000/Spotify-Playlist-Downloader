@@ -258,7 +258,11 @@ const downloadFile = async track => {
         fs.mkdirSync(dir, { recursive: true });
     }
 
-    const filePath = `${dir}/${track.name} - ${track.artists.join(' ')}.mp3`;
+    const sanitizeFileName = (name) => {
+            return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+    };
+
+    const filePath = `${dir}/${sanitizeFileName(track.name)} - ${sanitizeFileName(track.artists.join(' '))}.mp3`;
 
     console.log(`Downloading ${track.name}`);
 
