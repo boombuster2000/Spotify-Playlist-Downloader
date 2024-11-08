@@ -1,6 +1,6 @@
 require('dotenv').config();
 const fs = require("fs");
-const { TimeoutError } = require('puppeteer');
+const { TimeoutError, ProtocolError } = require('puppeteer');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const { pipeline } = require('stream/promises')
@@ -137,7 +137,7 @@ const getYoutubeSongUrls = async (tracks) => {
             throw new TypeError('artists must be a non-empty array of strings');
         }
 
-        const query = `${songName} ${artists.join(' ')}`;
+        const query = `${songName} - ${artists.join(' ')}`;
 
         const params = new URLSearchParams({
             part: 'snippet',
@@ -153,38 +153,34 @@ const getYoutubeSongUrls = async (tracks) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        let response;
-        let data;
+        try {
+            // Fetch data with timeout signal
+            const response = await fetch(url, { signal: controller.signal });
+            const data = await response.json();
 
-        fetch(url, { signal: controller.signal })
-        .then(fetchedResponse => {
-            response = fetchedResponse;
-            return response.json();
-        })
-        .then(fetchedData => {
-            data = fetchedData;
+            // Check if response is OK
             if (!response.ok) {
                 console.error(JSON.stringify(data, null, 4));
                 throw new Error(data.error.message);
             }
-        })
-        .then(() => {
+
+            // Check if there are video results
             if (data.items && data.items.length > 0) {
                 const videoId = data.items[0].id.videoId;
                 track.youtube_url = `https://www.youtube.com/watch?v=${videoId}`;
             } else {
                 throw new Error('No videos found');
             }
-        })
-        .catch(error => {
+
+        } catch (error) {
             console.error("Error fetching YouTube data:", error);
             throw error; // Re-throw to handle in caller
-        })
-        .finally(() => {
-            clearTimeout(timeoutId);
-        });
 
-        fs.writeFileSync('./tracks.json', JSON.stringify(tracks, null, 4));
+        } finally {
+            clearTimeout(timeoutId);
+        }
+
+            fs.writeFileSync('./tracks.json', JSON.stringify(tracks, null, 4));
 
     }
 
@@ -228,10 +224,11 @@ const download = async (browser, track)=> {
 
             console.log(`Downloading:\t\t${track.name}`);
             downloadFile(track);
+            break;
         } catch (error) {
 
-            if (error instanceof TimeoutError) {
-                const pageTimeoutElement = await page.$('#mp3-dl-result'); 
+            if (error instanceof TimeoutError || error instanceof ProtocolError) {
+                const pageTimeoutElement = await page.$('#mp3-dl-result', {visible: true});
 
                 if (!pageTimeoutElement || i==attempts-1) {
                     console.error(`Failed to download ${track.name}`);
@@ -284,17 +281,16 @@ const downloadFile = async track => {
 const main = async () => {
     const token = await getToken();
 
-
     console.log("Getting spotify tracks.");
-    let tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/28oszO2MY6o97B3yYFkiWO?si=6c6496aa66f842d7&pt=a0e5e4e29b041ec052bc045b00afc2d7");
+    let tracks = await getPlaylistItems(token, "https://open.spotify.com/playlist/26vWeaieUJwSO8D0XCKiz1?si=2bcc8b8a8a7044b6");
 
     console.log("Getting youtube urls");
     tracks = await getYoutubeSongUrls(tracks);
 
     // Launch browser
     const browser = await puppeteer.launch({
-        headless: true, // Set to true for headless mode
-        protocolTimeout: 180000
+        headless: false, // Set to true for headless mode
+        protocolTimeout: 30000,
     });
 
 
